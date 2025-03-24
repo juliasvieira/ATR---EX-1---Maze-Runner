@@ -30,8 +30,28 @@ Position load_maze(const std::string& file_name) {
     // 5. Encontre e retorne a posição inicial ('e')
     // 6. Trate possíveis erros (arquivo não encontrado, formato inválido, etc.)
     // 7. Feche o arquivo após a leitura
-    
-    return {-1, -1}; // Placeholder - substitua pelo valor correto
+
+    std::ifstream file(file_name);
+    if (!file.is_open()) {
+        std::cerr << "Erro ao abrir o arquivo: " << file_name << std::endl;
+        return {-1, -1};
+    }
+
+    file >> num_rows >> num_cols;
+    maze.resize(num_rows, std::vector<char>(num_cols));
+
+    Position start = {-1, -1};
+    for (int i = 0; i < num_rows; ++i) {
+        for (int j = 0; j < num_cols; ++j) {
+            file >> maze[i][j];
+            if (maze[i][j] == 'e') {
+                start = {i, j};  // Encontrar a posição inicial
+            }
+        }
+    }
+
+    file.close();
+    return start;
 }
 
 // Função para imprimir o labirinto
@@ -40,7 +60,18 @@ void print_maze() {
     // 1. Percorra a matriz 'maze' usando um loop aninhado
     // 2. Imprima cada caractere usando std::cout
     // 3. Adicione uma quebra de linha (std::cout << '\n') ao final de cada linha do labirinto
+    for (int i = 0; i < num_rows; ++i) {
+        for (int j = 0; j < num_cols; ++j) {
+            if (maze[i][j] == 'e' || maze[i][j] == 's') {
+                std::cout << maze[i][j] << ' ';  // Não alterar a entrada ou saída
+            } else {
+                std::cout << maze[i][j] << ' ';
+            }
+        }
+        std::cout << '\n';
+    }
 }
+
 
 // Função para verificar se uma posição é válida
 bool is_valid_position(int row, int col) {
@@ -50,7 +81,9 @@ bool is_valid_position(int row, int col) {
     // 2. Verifique se a posição é um caminho válido (maze[row][col] == 'x')
     // 3. Retorne true se ambas as condições forem verdadeiras, false caso contrário
 
-    return false; // Placeholder - substitua pela lógica correta
+    return row >= 0 && row < num_rows && col >= 0 && col < num_cols && 
+           (maze[row][col] == 'x' );      // nao sei se precisa adicionar:: || maze[row][col] == 'e');
+
 }
 
 // Função principal para navegar pelo labirinto
