@@ -104,7 +104,51 @@ bool walk(Position pos) {
     //    c. Se walk retornar true, propague o retorno (retorne true)
     // 7. Se todas as posições foram exploradas sem encontrar a saída, retorne false
     
-    return false; // Placeholder - substitua pela lógica correta
+    // Marcar a posição como explorada
+    if (maze[pos.row][pos.col] != 'e' && maze[pos.row][pos.col] != 's') {
+        maze[pos.row][pos.col] = '.';
+    }
+    maze[pos.row][pos.col] = 'o';  // Marcar a posição atual como 'o'
+
+    // Imprimir o labirinto
+    print_maze();
+    
+    // Atraso para visualização
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Verificar se chegou à saída
+    if (maze[pos.row][pos.col] == 's') {
+        return true;
+    }
+
+    // Direções: cima, baixo, esquerda, direita
+    std::vector<Position> directions = {
+        {pos.row - 1, pos.col},  // Cima
+        {pos.row + 1, pos.col},  // Baixo
+        {pos.row, pos.col - 1},  // Esquerda
+        {pos.row, pos.col + 1}   // Direita
+    };
+
+    // Explorar as posições adjacentes
+    bool found_exit = false;
+    for (const Position& dir : directions) {
+        if (is_valid_position(dir.row, dir.col)) {
+            valid_positions.push(dir);
+        }
+    }
+
+    // Explorar as posições na pilha
+    while (!valid_positions.empty()) {
+        Position next = valid_positions.top();
+        valid_positions.pop();
+
+        if (walk(next)) {
+            found_exit = true;
+            break;
+        }
+    }
+
+    return found_exit;
 }
 
 int main(int argc, char* argv[]) {
