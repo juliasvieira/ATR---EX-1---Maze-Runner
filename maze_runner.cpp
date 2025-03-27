@@ -22,7 +22,7 @@ std::stack<Position> path_stack;
 Position load_maze(const std::string& file_name) {
     std::ifstream file(file_name);
     if (!file) {
-        std::cerr << "Erro ao abrir o arquivo!" << std::endl;
+        std::cerr << "\nErro ao abrir o arquivo!\n" << std::endl;
         return {-1, -1};
     }
     
@@ -54,7 +54,7 @@ void print_maze() {
         }
         std::cout << '\n';
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Pequeno delay
+    std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Pequeno delay
 }
 
 // Função para verificar se uma posição é válida
@@ -63,54 +63,60 @@ bool is_valid_position(int row, int col) {
 }
 
 // Função principal para a busca automática da saída
-bool walk(Position pos) {
+bool walk() {
     while (!path_stack.empty()) {
         Position current = path_stack.top();
         path_stack.pop();
 
-        // Se encontrou a saída, termina a busca
+        // Se encontrou a saída, imprime e retorna true imediatamente
         if (maze[current.row][current.col] == 's') {
             print_maze();
-            std::cout << "Saida encontrada!" << std::endl;
-            return true;
+            std::cout << "\nSaída encontrada!\n" << std::endl;
+            return true; // <- Isso garante que a função termina corretamente
         }
         
         // Marca a posição atual como explorada
         if (maze[current.row][current.col] != 'o') {
-            maze[current.row][current.col] = '.';
+            maze[current.row][current.col] = '.'; 
         }
-        
+
         print_maze();
 
         // Movimentos: baixo, direita, cima, esquerda
         std::vector<Position> moves = {
-            {current.row + 1, current.col},
-            {current.row, current.col + 1},
-            {current.row - 1, current.col},
-            {current.row, current.col - 1}
+            {current.row + 1, current.col},  // Baixo
+            {current.row, current.col + 1},  // Direita
+            {current.row - 1, current.col},  // Cima
+            {current.row, current.col - 1}   // Esquerda
         };
         
         for (const auto& move : moves) {
             if (is_valid_position(move.row, move.col)) {
                 path_stack.push(move);
-                maze[move.row][move.col] = 'o'; // Marca a posição explorada
+                if (maze[move.row][move.col] != 's') { // Não sobrescreve a saída
+                    maze[move.row][move.col] = 'o'; 
+                }
             }
         }
     }
-    return false;
+
+    return false; // Retorna false apenas se o loop terminar sem encontrar a saída
 }
+
+
 
 int main() {
     start_pos = load_maze("labirinto.txt");
     if (start_pos.row == -1 || start_pos.col == -1) {
-        std::cerr << "Posicao inicial nao encontrada no labirinto." << std::endl;
+        std::cerr << "\nPosição inicial não encontrada no labirinto.\n" << std::endl;
         return 1;
     }
     
-    bool found_exit = walk(start_pos);
+    bool found_exit = walk(); // Chama a função e guarda o retorno
     if (!found_exit) {
-        std::cout << "Nao foi possivel encontrar a saida." << std::endl;
+        std::cout << "\nNão foi possível encontrar a saída.\n" << std::endl;
     }
     
     return 0;
 }
+
