@@ -6,12 +6,17 @@
 #include <chrono>
 #include <algorithm>
 
+
+
 using Maze = std::vector<std::vector<char>>;
+
+
 
 struct Position {
     int row;
     int col;
 };
+
 
 Maze maze;
 int num_rows;
@@ -20,33 +25,35 @@ Position start_pos;             // posição de início
 Position exit_pos;              // posição de saída
 std::stack<Position> path_stack;
 
+
+
 // Função para carregar o labirinto de um arquivo
 Position load_maze(const std::string& file_name) {
-    std::ifstream file(file_name);                     // abrir o arquivo
+    std::ifstream file(file_name);      // abrir o arquivo
     if (!file) {
         std::cerr << "\nErro ao abrir o arquivo!\n" << std::endl; 
-        return {-1, -1};
+        exit(1);
     }
 
-    file >> num_rows >> num_cols;              // leitura do número de linhas
-    maze.resize(num_rows, std::vector<char>(num_cols)); // redimensionamento matriz
+    file >> num_rows >> num_cols;       // leitura do número de linhas e colunas
+    maze.resize(num_rows, std::vector<char>(num_cols));     // redimensionamento matriz
     Position start{-1, -1};
 
-    for (int i = 0; i < num_rows; ++i) {           // leitura do labirinto (conteúdo)
+    for (int i = 0; i < num_rows; ++i) {        // leitura do labirinto (conteúdo
         for (int j = 0; j < num_cols; ++j) {
             file >> maze[i][j];
-            if (maze[i][j] == 'e') {               // encontrando a posição inicial
+            if (maze[i][j] == 'e') {            // encontrando a posição inicial
                 start = {i, j};
-                maze[i][j] = 'o';
+                maze[i][j] = 'o';               //seta a posição
                 path_stack.push(start);
             }
             if (maze[i][j] == 's') {
-                exit_pos = {i, j}; // salva a posição da saída
+                exit_pos = {i, j};  // salva a posição da saída
             }
         }
     }
 
-    file.close();          // fecha o arquivo
+    file.close();   // fecha o arquivo
     return start;
 }
 
@@ -59,7 +66,7 @@ void print_maze() {
         }
         std::cout << '\n';
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500)); // delay
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));    //delay para ver melhor
 }
 
 // Função para verificar se uma posição é válida
@@ -67,37 +74,36 @@ bool is_valid_position(int row, int col) {
     return (row >= 0 && row < num_rows && col >= 0 && col < num_cols && (maze[row][col] == 'x' || maze[row][col] == 's'));
 }
 
+// Função para calcular a distância até a saída
+auto calculate_distance = [](Position p) {
+    return std::abs(p.row - exit_pos.row) + std::abs(p.col - exit_pos.col);
+};
+
+// Função para escolher o melhor movimento
+auto choose_best_move = [](Position current) {
+    std::vector<Position> moves = {
+        {current.row + 1, current.col},  // baixo
+        {current.row, current.col + 1},  // direita
+        {current.row - 1, current.col},  // cima
+        {current.row, current.col - 1}   // esquerda
+    };
+
+    std::sort(moves.begin(), moves.end(), [](Position a, Position b) {  //calcula diatancia movimento em relação a saída
+        return calculate_distance(a) < calculate_distance(b);
+    });
+
+//retorna o primeiro movimento valido que nos leva mais perto da saída
+    for (const auto& move : moves) {
+        if (is_valid_position(move.row, move.col)) {
+            return move; 
+        }
+    }
+    return current;
+};
+
 // Função principal para navegar pelo labirinto
 bool walk() {
-    Position previous = start_pos; 
-
-    auto manhattan_distance = [](Position p) {
-        return std::abs(p.row - exit_pos.row) + std::abs(p.col - exit_pos.col);
-    };
-
-   
-    auto choose_best_move = [manhattan_distance](Position current) {   // escolher o melhor movimento em direção à saída
-            std::vector<Position> moves = {
-            {current.row + 1, current.col},  // baixo
-            {current.row, current.col + 1},  // direita
-            {current.row - 1, current.col},  // cima
-            {current.row, current.col - 1}   // esquerda
-        };
-
-        // ordena os movimentos pela distância Manhattan em relacao a saida
-        std::sort(moves.begin(), moves.end(), [manhattan_distance](Position a, Position b) {
-            return manhattan_distance(a) < manhattan_distance(b);
-        });
-
-        // retorna o primeiro movimento valido que nos leva mais perto da saída
-        for (const auto& move : moves) {
-            if (is_valid_position(move.row, move.col)) {
-                return move; 
-            }
-        }
-
-        return current; 
-    };
+    Position previous = start_pos;
 
     while (!path_stack.empty()) {
         Position current = path_stack.top();
@@ -110,18 +116,16 @@ bool walk() {
         }
 
         if (maze[previous.row][previous.col] != 's' && maze[previous.row][previous.col] != 'e') {
-            maze[previous.row][previous.col] = '.'; // marcando posicoes ja exploradas
+            maze[previous.row][previous.col] = '.';
         }
 
-        maze[current.row][current.col] = 'o';  //marcando posicao atual
-
+        maze[current.row][current.col] = 'o';
         print_maze(); 
         
         previous = current;
+        Position next_move = choose_best_move(current);
 
-        Position next_move = choose_best_move(current); // escolhe o melhor movimento em direcao à saída
-
-        // adiciona o próximo movimento à pilha
+        // adiciona o próximo movimento a pilha
         if (next_move.row != current.row || next_move.col != current.col) {
             path_stack.push(next_move);
         }
