@@ -2,7 +2,6 @@
 #include <fstream>
 #include <vector>
 #include <stack>
-#include <conio.h> // Para capturar teclas pressionadas
 #include <thread>
 #include <chrono>
 
@@ -14,13 +13,12 @@ struct Position {
 };
 
 Maze maze;
-Maze original_maze; // Para armazenar o labirinto original
 int num_rows;
 int num_cols;
-Position p_pos;
-std::stack<Position> valid_positions; 
+Position start_pos;
+std::stack<Position> path_stack;
 
-// 1. Função para carregar o labirinto de um arquivo
+// Função para carregar o labirinto de um arquivo
 Position load_maze(const std::string& file_name) {
     std::ifstream file(file_name);
     if (!file) {
@@ -30,17 +28,15 @@ Position load_maze(const std::string& file_name) {
     
     file >> num_rows >> num_cols;
     maze.resize(num_rows, std::vector<char>(num_cols));
-    original_maze.resize(num_rows, std::vector<char>(num_cols)); // Redimensionando o labirinto original
     Position start{-1, -1};
     
     for (int i = 0; i < num_rows; ++i) {
         for (int j = 0; j < num_cols; ++j) {
             file >> maze[i][j];
-            original_maze[i][j] = maze[i][j]; // Copiando o labirinto original
             if (maze[i][j] == 'e') {
                 start = {i, j};
-                maze[i][j] = 'o'; // Marca posição inicial
-                valid_positions.push(start); // Adiciona a posição inicial à pilha
+                maze[i][j] = 'o';
+                path_stack.push(start);
             }
         }
     }
@@ -49,68 +45,72 @@ Position load_maze(const std::string& file_name) {
     return start;
 }
 
-// 2. Função para imprimir o labirinto
+// Função para imprimir o labirinto
 void print_maze() {
-    system("cls"); // Limpa o console (no Windows)
+    system("cls"); // Para Windows
     for (const auto& row : maze) {
         for (char cell : row) {
             std::cout << cell << ' ';
         }
         std::cout << '\n';
     }
-    std::cout << "\nUse as setas para mover. Pressione 'q' para sair." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Pequeno delay
 }
 
-// 3. Função para verificar se uma posição é válida
+// Função para verificar se uma posição é válida
 bool is_valid_position(int row, int col) {
-    return (row >= 0 && row < num_rows && col >= 0 && col < num_cols && maze[row][col] != '#');
+    return (row >= 0 && row < num_rows && col >= 0 && col < num_cols && (maze[row][col] == 'x' || maze[row][col] == 's'));
 }
 
-// 4. Função principal para movimentação do jogador
-void walk() {
-    print_maze();  // Exibe o labirinto original na primeira vez
+// Função principal para a busca automática da saída
+bool walk(Position pos) {
+    while (!path_stack.empty()) {
+        Position current = path_stack.top();
+        path_stack.pop();
 
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Pequeno delay para melhorar a exibição
-        char key = _getch(); // Captura tecla pressionada
-        int new_row = p_pos.row;
-        int new_col = p_pos.col;
-        
-        switch (key) {
-            case 72: new_row--; break; // Seta para cima
-            case 80: new_row++; break; // Seta para baixo
-            case 75: new_col--; break; // Seta para esquerda
-            case 77: new_col++; break; // Seta para direita
-            case 'q': return; // Sair do jogo
+        // Se encontrou a saída, termina a busca
+        if (maze[current.row][current.col] == 's') {
+            print_maze();
+            std::cout << "Saida encontrada!" << std::endl;
+            return true;
         }
         
-        if (is_valid_position(new_row, new_col)) {
-            if (maze[new_row][new_col] == 's') {
-                print_maze();
-                std::cout << "Saida encontrada!" << std::endl;
-                return;
-            }
-            
-            // Marca a posição anterior como explorada
-            maze[p_pos.row][p_pos.col] = '.';
-            
-            // Atualiza a nova posição do jogador
-            p_pos = {new_row, new_col};
-            maze[p_pos.row][p_pos.col] = 'o'; // Atualiza nova posição como 'o'
-            valid_positions.push(p_pos); // Adiciona a nova posição à pilha
+        // Marca a posição atual como explorada
+        if (maze[current.row][current.col] != 'o') {
+            maze[current.row][current.col] = '.';
+        }
+        
+        print_maze();
 
-            print_maze(); // Exibe o labirinto atualizado
+        // Movimentos: baixo, direita, cima, esquerda
+        std::vector<Position> moves = {
+            {current.row + 1, current.col},
+            {current.row, current.col + 1},
+            {current.row - 1, current.col},
+            {current.row, current.col - 1}
+        };
+        
+        for (const auto& move : moves) {
+            if (is_valid_position(move.row, move.col)) {
+                path_stack.push(move);
+                maze[move.row][move.col] = 'o'; // Marca a posição explorada
+            }
         }
     }
+    return false;
 }
 
 int main() {
-    p_pos = load_maze("labirinto.txt");
-    if (p_pos.row == -1 || p_pos.col == -1) {
-        std::cerr << "Posição inicial não encontrada no labirinto." << std::endl;
+    start_pos = load_maze("labirinto.txt");
+    if (start_pos.row == -1 || start_pos.col == -1) {
+        std::cerr << "Posicao inicial nao encontrada no labirinto." << std::endl;
         return 1;
     }
     
-    walk();
+    bool found_exit = walk(start_pos);
+    if (!found_exit) {
+        std::cout << "Nao foi possivel encontrar a saida." << std::endl;
+    }
+    
     return 0;
 }
